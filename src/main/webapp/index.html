@@ -1,10 +1,155 @@
+<%@page import="java.sql.*"%>
+<%@page contentType="text/html" pageEncoding="UTF-8"%>
+<%
+    // Session Validation: Check if the user is logged in
+    // We retrieve "userFullName" which was set in auth_process.jsp
+    String fullName = (String) session.getAttribute("userFullName");
+    
+    if (fullName == null) {
+        // If no session exists, redirect back to login page
+        response.sendRedirect("login.jsp");
+        return;
+    }
+%>
 <!DOCTYPE html>
-<html>
-    <head>
-        <title>Start Page</title>
-        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-    </head>
-    <body>
-        <h1>Hello World!</h1>
-    </body>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Course Dashboard - E-Learning System</title>
+    <style>
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            background-color: #f4f7f6; 
+            margin: 0; 
+        }
+        .navbar { 
+            background-color: #1877f2; 
+            color: white; 
+            padding: 15px 50px; 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .container { 
+            padding: 40px 50px; 
+        }
+        .welcome-msg { 
+            margin-bottom: 40px; 
+        }
+        .welcome-msg h1 { 
+            color: #1c1e21; 
+            margin: 0; 
+        }
+        .welcome-msg p { 
+            color: #606770; 
+            font-size: 1.1em; 
+        }
+        .course-grid { 
+            display: grid; 
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); 
+            gap: 25px; 
+        }
+        .course-card { 
+            background: white; 
+            border-radius: 10px; 
+            padding: 25px; 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05); 
+            border: 1px solid #e0e0e0; 
+            transition: transform 0.2s;
+        }
+        .course-card:hover {
+            transform: translateY(-5px);
+        }
+        .course-card h3 { 
+            margin-top: 0; 
+            color: #1877f2; 
+        }
+        .course-card p { 
+            color: #4b4f56; 
+            font-size: 0.95em; 
+            height: 60px; 
+            overflow: hidden; 
+        }
+        .btn-register { 
+            background-color: #42b72a; 
+            color: white; 
+            border: none; 
+            padding: 12px 15px; 
+            border-radius: 6px; 
+            cursor: pointer; 
+            width: 100%; 
+            font-weight: bold; 
+            font-size: 1em;
+            margin-top: 10px;
+        }
+        .btn-register:hover { 
+            background-color: #36a420; 
+        }
+        .btn-logout { 
+            color: white; 
+            text-decoration: none; 
+            border: 1px solid rgba(255,255,255,0.5); 
+            padding: 8px 18px; 
+            border-radius: 6px; 
+            transition: 0.3s;
+        }
+        .btn-logout:hover { 
+            background-color: rgba(255,255,255,0.2); 
+        }
+    </style>
+</head>
+<body>
+
+    <div class="navbar">
+        <h2>E-Learning Portal</h2>
+        <div>
+            <span style="margin-right: 15px;">Welcome, <b><%= fullName %></b></span>
+            <a href="logout.jsp" class="btn-logout">Sign Out</a>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="welcome-msg">
+            <h1>Course Catalog</h1>
+            <p>Explore our available courses and enroll to start your journey.</p>
+        </div>
+
+        <div class="course-grid">
+            <%
+                Connection conn = null;
+                try {
+                    // 1. Connect to MySQL Database
+                    Class.forName("com.mysql.cj.jdbc.Driver");
+                    conn = DriverManager.getConnection("jdbc:mysql://localhost:3306/elearning_db", "root", "");
+                    
+                    // 2. Fetch courses from 'courses' table
+                    String sql = "SELECT * FROM courses";
+                    Statement stmt = conn.createStatement();
+                    ResultSet rs = stmt.executeQuery(sql);
+
+                    // 3. Loop through results and display as cards
+                    while(rs.next()) {
+            %>
+            <div class="course-card">
+                <h3><%= rs.getString("course_name") %></h3>
+                <p><%= rs.getString("description") %></p>
+                <form action="enroll_process.jsp" method="POST">
+                    <input type="hidden" name="course_id" value="<%= rs.getInt("course_id") %>">
+                    <button type="submit" class="btn-register">Enroll Now</button>
+                </form>
+            </div>
+            <%
+                    }
+                } catch (Exception e) {
+                    out.println("<p style='color:red;'>Database Error: " + e.getMessage() + "</p>");
+                } finally {
+                    if (conn != null) conn.close();
+                }
+            %>
+        </div>
+    </div>
+
+</body>
 </html>
