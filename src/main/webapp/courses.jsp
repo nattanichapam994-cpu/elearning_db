@@ -21,20 +21,23 @@
         if ("save".equals(action)) {
             String id = request.getParameter("course_id");
             String name = request.getParameter("course_name");
+            String teacherId = request.getParameter("teacher_id");
 
             if (id == null || id.isEmpty()) {
                 // Add New Course
-                PreparedStatement ps = conn.prepareStatement("INSERT INTO courses (course_name) VALUES (?)");
+                PreparedStatement ps = conn.prepareStatement("INSERT INTO courses (course_name, teacher_id) VALUES (?, ?)");
                 ps.setString(1, name);
+                ps.setInt(2, Integer.parseInt(teacherId));
                 ps.executeUpdate();
             } else {
                 // Update Existing Course
-                PreparedStatement ps = conn.prepareStatement("UPDATE courses SET course_name=? WHERE course_id=?");
+                PreparedStatement ps = conn.prepareStatement("UPDATE courses SET course_name=?, teacher_id=? WHERE course_id=?");
                 ps.setString(1, name);
-                ps.setInt(2, Integer.parseInt(id));
+                ps.setInt(2, Integer.parseInt(teacherId));
+                ps.setInt(3, Integer.parseInt(id));
                 ps.executeUpdate();
             }
-            response.sendRedirect("all_addmin.jsp"); // Refresh to clear parameters
+            response.sendRedirect("all_addmin.jsp"); 
             return;
         } 
         // 2.2 Delete Data
@@ -58,8 +61,7 @@
     <style>
         body { font-family: 'Sarabun', sans-serif; background-color: #f8f9fa; }
         .card { border: none; border-radius: 15px; }
-        .table { background: white; border-radius: 10px; overflow: hidden; }
-        .form-label { fw-bold; }
+        .table-container { background: white; border-radius: 10px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
     </style>
 </head>
 <body class="container mt-5">
@@ -73,12 +75,16 @@
         <form action="all_addmin.jsp?action=save" method="post">
             <input type="hidden" name="course_id" id="course_id">
             <div class="row g-3">
-                <div class="col-md-9">
+                <div class="col-md-5">
                     <label class="form-label">Course Name</label>
-                    <input type="text" name="course_name" id="name" class="form-control" placeholder="Enter course name here" required>
+                    <input type="text" name="course_name" id="name" class="form-control" placeholder="Course Name" required>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Teacher ID</label>
+                    <input type="number" name="teacher_id" id="teacher" class="form-control" placeholder="Teacher ID" required>
                 </div>
                 <div class="col-md-3 d-flex align-items-end">
-                    <button type="submit" class="btn btn-primary w-100">Save Data</button>
+                    <button type="submit" id="btn-submit" class="btn btn-primary w-100">Save Data</button>
                 </div>
             </div>
             <div id="edit-cancel" class="mt-2" style="display:none;">
@@ -87,13 +93,14 @@
         </form>
     </div>
 
-    <div class="table-responsive shadow-sm">
+    <div class="table-container">
         <table class="table table-hover mb-0">
             <thead class="table-dark">
                 <tr>
-                    <th width="15%" class="text-center">Course ID</th>
-                    <th width="65%">Course Title</th>
-                    <th width="20%" class="text-center">Actions</th>
+                    <th class="text-center">ID</th>
+                    <th>Course Title</th>
+                    <th class="text-center">Teacher ID</th>
+                    <th class="text-center">Actions</th>
                 </tr>
             </thead>
             <tbody>
@@ -107,20 +114,21 @@
                 <tr>
                     <td class="text-center"><%= rs.getInt("course_id") %></td>
                     <td><strong><%= rs.getString("course_name") %></strong></td>
+                    <td class="text-center"><%= rs.getInt("teacher_id") %></td>
                     <td class="text-center">
                         <button class="btn btn-warning btn-sm mx-1" 
-                                onclick="editData('<%= rs.getInt("course_id") %>', '<%= rs.getString("course_name") %>')">
+                                onclick="editData('<%= rs.getInt("course_id") %>', '<%= rs.getString("course_name") %>', '<%= rs.getInt("teacher_id") %>')">
                             Edit
                         </button>
                         <a href="all_addmin.jsp?action=delete&id=<%= rs.getInt("course_id") %>" 
                            class="btn btn-danger btn-sm mx-1" 
-                           onclick="return confirm('Are you sure you want to delete this course?')">Delete</a>
+                           onclick="return confirm('Delete this course?')">Delete</a>
                     </td>
                 </tr>
                 <% 
                     } 
                     if (!hasData) {
-                        out.println("<tr><td colspan='3' class='text-center py-4 text-muted'>No courses found in the system.</td></tr>");
+                        out.println("<tr><td colspan='4' class='text-center py-4 text-muted'>No records found.</td></tr>");
                     }
                 %>
             </tbody>
@@ -128,19 +136,15 @@
     </div>
 
     <script>
-        /**
-         * Function to transfer row data back to the form for editing
-         */
-        function editData(id, name) {
+        function editData(id, name, teacher) {
             document.getElementById('course_id').value = id;
             document.getElementById('name').value = name;
+            document.getElementById('teacher').value = teacher;
             
-            document.getElementById('form-title').innerText = "Edit Course Information (ID: " + id + ")";
+            document.getElementById('form-title').innerText = "Edit Course (ID: " + id + ")";
             document.getElementById('edit-cancel').style.display = "block";
+            document.getElementById('btn-submit').className = "btn btn-success w-100";
             document.getElementById('name').focus();
-            
-            // Highlight the save button during editing
-            document.querySelector('button[type="submit"]').className = "btn btn-success w-100";
         }
     </script>
 
@@ -148,7 +152,7 @@
 </html>
 <%
     } catch (Exception e) {
-        out.println("<div class='alert alert-danger mt-5'><strong>Error Occurred:</strong> " + e.getMessage() + "</div>");
+        out.println("<div class='alert alert-danger mt-5'><strong>Error:</strong> " + e.getMessage() + "</div>");
     } finally {
         if (conn != null) try { conn.close(); } catch (SQLException ignore) {}
     }
