@@ -65,6 +65,8 @@
 
 <body class="container mt-5 pb-5">
 
+    <jsp:include page="navbar.jsp" />
+
 <h2 class="fw-bold mb-4">📝 Quizzes Management</h2>
 
 <div class="card main-card p-4 mb-4">

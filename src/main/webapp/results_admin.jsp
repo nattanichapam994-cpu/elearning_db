@@ -69,6 +69,8 @@ body { background-color: #f4f7f6; font-family: 'Segoe UI', sans-serif; }
 
 <body class="container mt-5 pb-5">
 
+      <jsp:include page="navbar.jsp" />
+      
 <div class="mb-4">
     <h2 class="fw-bold text-dark">📝 Results Management</h2>
 </div>
