@@ -107,7 +107,7 @@ class CourseController {
     }
 }
 
-// --- 4. Main Application ---
+// --- 4. Main  Application ---
 @SpringBootApplication
 public class CourseApp {
     public static void main(String[] args) {
