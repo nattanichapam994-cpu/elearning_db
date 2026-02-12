@@ -1,171 +1,165 @@
 <%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
-<%@ page import="java.sql.*, java.util.*" %>
+<%@ page import="java.sql.*" %>
 <%
-    // --- 1. Database Connection Settings ---
-    String driver = "com.mysql.cj.jdbc.Driver";
-    String url = "jdbc:mysql://localhost:3306/elearning_db?useUnicode=true&characterEncoding=UTF-8";
-    String user = "root";
-    String pass = ""; // Enter your MySQL password here
+    // 1. Check if User is Logged In
+    // We retrieve "user_name" from the session established during login
+    String currentUserName = (String) session.getAttribute("user_name");
 
-    Connection conn = null;
-    request.setCharacterEncoding("UTF-8");
-
-    try {
-        Class.forName(driver);
-        conn = DriverManager.getConnection(url, user, pass);
-
-        // --- 2. Logic Handling (CRUD Operations) ---
-        String action = request.getParameter("action");
-        
-        // 2.1 Save Data (Insert new or Update existing)
-        if ("save".equals(action)) {
-            String id = request.getParameter("enroll_id");
-            String userId = request.getParameter("user_id");
-            String courseId = request.getParameter("course_id");
-
-            if (id == null || id.isEmpty()) {
-                // Insert New Enrollment
-                PreparedStatement ps = conn.prepareStatement("INSERT INTO enrollments (user_id, course_id) VALUES (?, ?)");
-                ps.setInt(1, Integer.parseInt(userId));
-                ps.setInt(2, Integer.parseInt(courseId));
-                ps.executeUpdate();
-            } else {
-                // Update Existing Enrollment
-                PreparedStatement ps = conn.prepareStatement("UPDATE enrollments SET user_id=?, course_id=? WHERE enroll_id=?");
-                ps.setInt(1, Integer.parseInt(userId));
-                ps.setInt(2, Integer.parseInt(courseId));
-                ps.setInt(3, Integer.parseInt(id));
-                ps.executeUpdate();
-            }
-            response.sendRedirect("enrollment_admin.jsp"); 
-            return;
-        } 
-        // 2.2 Delete Data
-        else if ("delete".equals(action)) {
-            String id = request.getParameter("id");
-            PreparedStatement ps = conn.prepareStatement("DELETE FROM enrollments WHERE enroll_id = ?");
-            ps.setInt(1, Integer.parseInt(id));
-            ps.executeUpdate();
-            response.sendRedirect("enrollment_admin.jsp");
-            return;
-        }
+    if (currentUserName == null) {
+        // Redirect to login page if session is empty
+        response.sendRedirect("login.jsp");
+        return; // Stop processing the rest of the page
+    }
 %>
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Enrollment Management System</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <title>E-Learning | Enrollment Dashboard</title>
     <style>
-        body { background-color: #f4f7f9; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        .main-container { max-width: 1000px; margin-top: 50px; }
-        .card { border: none; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
-        .table-container { background: white; border-radius: 10px; padding: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
-        .btn-primary { background-color: #0d6efd; }
+        :root { --primary: #4e73df; --success: #1cc88a; --danger: #e74a3b; --dark: #5a5c69; --bg: #f8f9fc; }
+        body { font-family: 'Segoe UI', Tahoma, sans-serif; background-color: var(--bg); margin: 0; padding: 20px; color: #333; }
+        .wrapper { max-width: 950px; margin: 0 auto; }
+        
+        /* Layout Components */
+        .card { background: white; padding: 30px; border-radius: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); margin-bottom: 25px; border-left: 5px solid var(--primary); }
+        h2 { margin-top: 0; color: var(--dark); font-size: 1.5rem; display: flex; align-items: center; gap: 10px; }
+        
+        /* Modern Form */
+        .enroll-form { display: grid; grid-template-columns: 1fr 1fr auto; gap: 20px; align-items: end; background: #fcfcfc; padding: 20px; border-radius: 10px; border: 1px solid #eee; }
+        .form-group { display: flex; flex-direction: column; }
+        label { font-size: 0.8rem; font-weight: bold; margin-bottom: 8px; color: var(--primary); text-transform: uppercase; }
+        input, select { padding: 12px; border: 1px solid #d1d3e2; border-radius: 8px; transition: 0.3s; }
+        input:focus, select:focus { border-color: var(--primary); box-shadow: 0 0 0 0.2rem rgba(78,115,223,0.25); outline: none; }
+        
+        /* Table and Actions */
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        th { background: #f8f9fc; text-align: left; padding: 15px; border-bottom: 2px solid #e3e6f0; color: var(--dark); font-size: 0.8rem; }
+        td { padding: 15px; border-bottom: 1px solid #e3e6f0; vertical-align: middle; }
+        .btn { padding: 8px 16px; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; text-decoration: none; font-size: 12px; transition: 0.2s; display: inline-block; }
+        .btn-add { background: var(--primary); color: white; height: 45px; }
+        .btn-edit { background: var(--success); color: white; margin-right: 5px; }
+        .btn-delete { background: var(--danger); color: white; }
+        .btn:hover { opacity: 0.85; transform: translateY(-1px); }
+
+        .alert { padding: 15px; border-radius: 8px; margin-bottom: 20px; text-align: center; animation: fadeIn 0.5s; }
+        .alert-success { background: #d1e7dd; color: #0f5132; border: 1px solid #badbcc; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
     </style>
 </head>
-<body class="container main-container">
+<body>
 
-    <div class="mb-4 d-flex justify-content-between align-items-center">
-        <h2 class="fw-bold text-dark">Enrollment Management</h2>
-        <span class="badge bg-secondary">Table: enrollments</span>
-    </div>
+<div class="wrapper">
+    <div class="card">
+        <h2>📚 Register New Course</h2>
+        
+        <%
+            String dbUrl = "jdbc:mysql://localhost:3306/elearning_db";
+            String dbUser = "root";
+            String dbPass = "";
+            Connection conn = null;
 
-    <div class="card p-4 mb-4">
-        <h5 id="form-title" class="text-primary mb-3">Add New Enrollment</h5>
-        <form action="enrollment_admin.jsp?action=save" method="post">
-            <input type="hidden" name="enroll_id" id="enroll_id">
-            
-            <div class="row g-3">
-                <div class="col-md-4">
-                    <label class="form-label">User ID</label>
-                    <input type="number" name="user_id" id="user_id" class="form-control" placeholder="Enter User ID" required>
-                </div>
-                <div class="col-md-4">
-                    <label class="form-label">Course ID</label>
-                    <input type="number" name="course_id" id="course_id" class="form-control" placeholder="Enter Course ID" required>
-                </div>
-                <div class="col-md-4 d-flex align-items-end">
-                    <button type="submit" id="submit-btn" class="btn btn-primary w-100">Save Enrollment</button>
-                </div>
+            try {
+                Class.forName("com.mysql.cj.jdbc.Driver");
+                conn = DriverManager.getConnection(dbUrl, dbUser, dbPass);
+
+                // --- ACTION: DELETE ---
+                String deleteId = request.getParameter("delete");
+                if (deleteId != null) {
+                    PreparedStatement psDel = conn.prepareStatement("DELETE FROM enrollments WHERE enroll_id = ?");
+                    psDel.setString(1, deleteId);
+                    psDel.executeUpdate();
+                    out.print("<div class='alert alert-success'>Enrollment deleted successfully.</div>");
+                }
+
+                // --- ACTION: INSERT ---
+                String courseId = request.getParameter("course_id");
+                if (courseId != null && !courseId.isEmpty()) {
+                    // We use currentUserName from Session to insert
+                    PreparedStatement psIns = conn.prepareStatement("INSERT INTO enrollments (user_name, course_id) VALUES (?, ?)");
+                    psIns.setString(1, currentUserName);
+                    psIns.setString(2, courseId);
+                    psIns.executeUpdate();
+                    out.print("<div class='alert alert-success'>Successfully enrolled in the course!</div>");
+                }
+        %>
+
+        <form method="POST" class="enroll-form">
+            <div class="form-group">
+                <label>Logged in as</label>
+                <input type="text" value="<%= currentUserName %>" readonly style="background: #f1f3f9; font-weight: bold; color: #4e73df;">
             </div>
-            <div id="cancel-edit" class="mt-2" style="display:none;">
-                <a href="enrollment_admin.jsp" class="text-danger text-decoration-none small">Cancel Editing</a>
+            <div class="form-group">
+                <label>Available Courses</label>
+                <select name="course_id" required>
+                    <option value="">-- Select a Course --</option>
+                    <%
+                        ResultSet rsCourses = conn.createStatement().executeQuery("SELECT * FROM courses");
+                        while(rsCourses.next()){
+                    %>
+                        <option value="<%= rsCourses.getString("course_id") %>">
+                            <%= rsCourses.getString("course_name") %>
+                        </option>
+                    <% } %>
+                </select>
             </div>
+            <button type="submit" class="btn btn-add">Confirm Enrollment</button>
         </form>
     </div>
 
-    <div class="table-container">
-        <table class="table table-hover align-middle">
-            <thead class="table-dark">
+    
+
+    <div class="card" style="border-left-color: var(--success);">
+        <h2>📝 My Learning Records</h2>
+        <table>
+            <thead>
                 <tr>
-                    <th class="text-center">Enroll ID</th>
-                    <th class="text-center">User ID</th>
-                    <th class="text-center">Course ID</th>
-                    <th class="text-center">Actions</th>
+                    <th>ID</th>
+                    <th>Course Title</th>
+                    <th>Date Enrolled</th>
+                    <th>Management</th>
                 </tr>
             </thead>
             <tbody>
                 <%
-                    Statement stmt = conn.createStatement();
-                    ResultSet rs = stmt.executeQuery("SELECT * FROM enrollments ORDER BY enroll_id DESC");
-                    boolean hasRecords = false;
-                    while(rs.next()) {
-                        hasRecords = true;
+                    // Fetch list using user_name from session
+                    String sql = "SELECT e.enroll_id, c.course_name FROM enrollments e " +
+                                 "JOIN courses c ON e.course_id = c.course_id " +
+                                 "WHERE e.user_name = ?";
+                    PreparedStatement psList = conn.prepareStatement(sql);
+                    psList.setString(1, currentUserName);
+                    ResultSet rsList = psList.executeQuery();
+                    
+                    if (!rsList.isBeforeFirst()) {
+                        out.print("<tr><td colspan='4' style='text-align:center; color:#999;'>No courses enrolled yet.</td></tr>");
+                    }
+
+                    while(rsList.next()) {
                 %>
                 <tr>
-                    <td class="text-center fw-bold"><%= rs.getInt("enroll_id") %></td>
-                    <td class="text-center"><%= rs.getInt("user_id") %></td>
-                    <td class="text-center"><%= rs.getInt("course_id") %></td>
-                    <td class="text-center">
-                        <button class="btn btn-warning btn-sm" 
-                                onclick="prepareEdit('<%= rs.getInt("enroll_id") %>', '<%= rs.getInt("user_id") %>', '<%= rs.getInt("course_id") %>')">
-                            Edit
-                        </button>
-                        <a href="enrollment_admin.jsp?action=delete&id=<%= rs.getInt("enroll_id") %>" 
-                           class="btn btn-danger btn-sm" 
-                           onclick="return confirm('Are you sure you want to delete this record?')">Delete</a>
+                    <td>#<%= rsList.getString("enroll_id") %></td>
+                    <td><strong><%= rsList.getString("course_name") %></strong></td>
+                    <td style="color: #888;">Feb 12, 2026</td>
+                    <td>
+                        <a href="edit_enrollment.jsp?id=<%= rsList.getString("enroll_id") %>" class="btn btn-edit">Edit</a>
+                        <a href="enrollment.jsp?delete=<%= rsList.getString("enroll_id") %>" 
+                           class="btn btn-delete" onclick="return confirm('Do you want to cancel this enrollment?')">Delete</a>
                     </td>
                 </tr>
-                <% 
-                    } 
-                    if (!hasRecords) {
-                %>
-                    <tr>
-                        <td colspan="4" class="text-center text-muted py-4">No enrollment records found.</td>
-                    </tr>
                 <% } %>
             </tbody>
         </table>
     </div>
 
-    <script>
-        /**
-         * Populates the form fields with data from the selected row for editing
-         */
-        function prepareEdit(id, user, course) {
-            document.getElementById('enroll_id').value = id;
-            document.getElementById('user_id').value = user;
-            document.getElementById('course_id').value = course;
-            
-            // UI Feedback
-            document.getElementById('form-title').innerText = "Edit Enrollment (ID: " + id + ")";
-            document.getElementById('form-title').className = "text-success mb-3";
-            document.getElementById('submit-btn').className = "btn btn-success w-100";
-            document.getElementById('cancel-edit').style.display = "block";
-            
-            // Scroll to form
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-        }
-    </script>
+    <%
+            } catch (Exception e) {
+                out.print("<div class='alert' style='background:#fff3cd; color:#664d03;'>Database Error: " + e.getMessage() + "</div>");
+            } finally {
+                if (conn != null) conn.close();
+            }
+    %>
+</div>
 
 </body>
 </html>
-<%
-    } catch (Exception e) {
-        out.println("<div class='alert alert-danger mt-5'><strong>Database Error:</strong> " + e.getMessage() + "</div>");
-    } finally {
-        if (conn != null) try { conn.close(); } catch (SQLException ignore) {}
-    }
-%>
