@@ -1,10 +1,11 @@
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
 <%@ page import="java.sql.*" %>
+<% request.setCharacterEncoding("UTF-8"); %>
 <%
   Integer sessUserId = (Integer) session.getAttribute("userId");
   if (sessUserId == null) { response.sendRedirect("login.jsp"); return; }
 
-  final String DB_URL  = "jdbc:mysql://localhost:3306/elearning_db?useSSL=false&serverTimezone=Asia/Bangkok&characterEncoding=UTF-8";
+  final String DB_URL  = "jdbc:mysql://localhost:3306/elearning_db?useSSL=false&serverTimezone=Asia/Bangkok&characterEncoding=UTF-8&useUnicode=true";
   final String DB_USER = "root";
   final String DB_PASS = "";
 
@@ -314,7 +315,7 @@
         <div style="font-weight:700;font-size:1.1rem;"><%= sessFullname %></div>
         <div style="color:var(--gray);font-size:0.875rem;">@<%= sessUsername %></div>
       </div>
-      <form method="POST" action="dashboard.jsp?tab=profile">
+      <form method="POST" action="dashboard.jsp?tab=profile" accept-charset="UTF-8">
         <div class="form-group">
           <label class="form-label">ชื่อผู้ใช้</label>
           <input class="form-control" value="<%= sessUsername %>" readonly

@@ -1,18 +1,19 @@
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
 <%@ page import="java.sql.*" %>
+<% request.setCharacterEncoding("UTF-8"); %>
 <%
   if (session.getAttribute("userId") != null) {
     response.sendRedirect("dashboard.jsp"); return;
   }
 
-  final String DB_URL  = "jdbc:mysql://localhost:3306/elearning_db?useSSL=false&serverTimezone=Asia/Bangkok&characterEncoding=UTF-8";
+  final String DB_URL  = "jdbc:mysql://localhost:3306/elearning_db?useSSL=false&serverTimezone=Asia/Bangkok&characterEncoding=UTF-8&useUnicode=true";
   final String DB_USER = "root";
   final String DB_PASS = "";
 
   String error   = "";
-  String success  = "";
-  String valUser  = "";
-  String valFull  = "";
+  String success = "";
+  String valUser = "";
+  String valFull = "";
 
   if ("POST".equals(request.getMethod())) {
     String pUser = request.getParameter("username");
@@ -99,7 +100,7 @@
       </div>
     <% } else { %>
 
-    <form method="POST" action="register.jsp">
+    <form method="POST" action="register.jsp" accept-charset="UTF-8">
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
         <div class="form-group">
           <label class="form-label">ชื่อ-นามสกุล <span style="color:red">*</span></label>
