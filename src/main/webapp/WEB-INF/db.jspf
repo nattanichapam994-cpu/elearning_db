@@ -1,0 +1,48 @@
+<%@ page import="java.sql.*" %>
+<%@ page import="java.nio.charset.StandardCharsets" %>
+<%!
+  // ===== DB Connection — รองรับภาษาไทย utf8mb4 =====
+  static final String DB_URL =
+    "jdbc:mysql://localhost:3306/elearning_db" +
+    "?useSSL=false" +
+    "&serverTimezone=Asia/Bangkok" +
+    "&useUnicode=true" +
+    "&characterEncoding=utf8mb4" +
+    "&connectionCollation=utf8mb4_unicode_ci";
+  static final String DB_USER = "root";
+  static final String DB_PASS = "";
+
+  Connection getConnection() throws Exception {
+    Class.forName("com.mysql.cj.jdbc.Driver");
+    Connection c = DriverManager.getConnection(DB_URL, DB_USER, DB_PASS);
+    // ตั้ง charset ระดับ connection ให้แน่ใจ
+    try (java.sql.Statement st = c.createStatement()) {
+      st.execute("SET NAMES utf8mb4");
+      st.execute("SET CHARACTER SET utf8mb4");
+      st.execute("SET character_set_connection=utf8mb4");
+    }
+    return c;
+  }
+
+  // ===== Helper: escape HTML (ป้องกัน XSS และแสดงภาษาไทยถูกต้อง) =====
+  String esc(String s) {
+    if (s == null) return "";
+    return s.replace("&","&amp;")
+            .replace("<","&lt;")
+            .replace(">","&gt;")
+            .replace("\"","&quot;")
+            .replace("'","&#39;");
+  }
+
+  // ===== Helper: รับค่า parameter แบบ UTF-8 =====
+  String param(javax.servlet.http.HttpServletRequest req, String name) {
+    String v = req.getParameter(name);
+    return v != null ? v.trim() : "";
+  }
+%>
+<%
+  // บังคับ encoding request/response ทุกครั้งที่ include ไฟล์นี้
+  request.setCharacterEncoding("UTF-8");
+  response.setCharacterEncoding("UTF-8");
+  response.setContentType("text/html; charset=UTF-8");
+%>

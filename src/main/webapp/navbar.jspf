@@ -1,0 +1,77 @@
+<%-- navbar.jspf --%>
+<%
+  request.setCharacterEncoding("UTF-8");
+
+  String _currentPage = (request.getAttribute("currentPage") != null) ? (String)request.getAttribute("currentPage") : "";
+  Integer _navUserId  = (Integer) session.getAttribute("userId");
+  String  _navName    = (String)  session.getAttribute("fullname");
+  String  _navRole    = (String)  session.getAttribute("role");
+
+  if (_navName == null) _navName = "";
+  if (_navRole == null) _navRole = "";
+
+  String _navInitial  = (_navName.length() > 0) ? String.valueOf(_navName.charAt(0)) : "U";
+%>
+
+<nav class="navbar">
+  <a class="navbar-brand" href="index.jsp">
+    <div class="logo-icon">?</div>
+    LearnHub
+  </a>
+
+  <ul class="navbar-nav">
+    <li>
+      <a href="index.jsp" class='<%= "home".equals(_currentPage) ? "active" : "" %>'>
+        ????????
+      </a>
+    </li>
+
+    <li>
+      <a href="courses.jsp" class='<%= "courses".equals(_currentPage) ? "active" : "" %>'>
+        ??????????
+      </a>
+    </li>
+
+    <% if (_navUserId != null) { %>
+    <li>
+      <a href="dashboard.jsp" class='<%= "dashboard".equals(_currentPage) ? "active" : "" %>'>
+        ????????
+      </a>
+    </li>
+    <% } %>
+  </ul>
+
+  <div class="navbar-actions">
+    <% if (_navUserId != null) { %>
+
+      <div style="display:flex;align-items:center;gap:10px;">
+        <div class="avatar"><%= _navInitial %></div>
+
+        <div>
+          <div style="font-weight:600;font-size:0.875rem;">
+            <%= _navName %>
+          </div>
+
+          <div style="font-size:0.75rem;color:var(--gray);">
+            <%= "admin".equals(_navRole) ? "???????????" : "????????" %>
+          </div>
+        </div>
+
+        <a href="logout.jsp" class="btn btn-outline btn-sm">
+          ??????????
+        </a>
+      </div>
+
+    <% } else { %>
+
+      <a href="login.jsp" class="btn btn-outline">
+        ???????????
+      </a>
+
+      <a href="register.jsp" class="btn btn-primary">
+        ???????????
+      </a>
+
+    <% } %>
+  </div>
+</nav>

@@ -1,159 +1,106 @@
-<%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
-<%@ page import="java.sql.*, java.util.*" %>
+<%@ page contentType="text/html;charset=UTF-8" language="java" %>
+<%@ page import="java.sql.*" %>
 <%
-    // --- 1. Database Connection Configuration ---
-    String driver = "com.mysql.cj.jdbc.Driver";
-    String url = "jdbc:mysql://localhost:3306/elearning_db?useUnicode=true&characterEncoding=UTF-8";
-    String user = "root";
-    String pass = ""; // Enter your MySQL password here (leave blank if none)
+  final String DB_URL  = "jdbc:mysql://localhost:3306/elearning_db?useSSL=false&serverTimezone=Asia/Bangkok&characterEncoding=UTF-8";
+  final String DB_USER = "root";
+  final String DB_PASS = "";
 
-    Connection conn = null;
-    request.setCharacterEncoding("UTF-8");
-
-    try {
-        Class.forName(driver);
-        conn = DriverManager.getConnection(url, user, pass);
-
-        // --- 2. Logic Handling (CRUD Operations) ---
-        String action = request.getParameter("action");
-        
-        // 2.1 Save Data (Create New or Update Existing)
-        if ("save".equals(action)) {
-            String id = request.getParameter("course_id");
-            String name = request.getParameter("course_name");
-            String teacherId = request.getParameter("teacher_id");
-
-            if (id == null || id.isEmpty()) {
-                // Add New Course
-                PreparedStatement ps = conn.prepareStatement("INSERT INTO courses (course_name, teacher_id) VALUES (?, ?)");
-                ps.setString(1, name);
-                ps.setInt(2, Integer.parseInt(teacherId));
-                ps.executeUpdate();
-            } else {
-                // Update Existing Course
-                PreparedStatement ps = conn.prepareStatement("UPDATE courses SET course_name=?, teacher_id=? WHERE course_id=?");
-                ps.setString(1, name);
-                ps.setInt(2, Integer.parseInt(teacherId));
-                ps.setInt(3, Integer.parseInt(id));
-                ps.executeUpdate();
-            }
-            response.sendRedirect("all_addmin.jsp"); 
-            return;
-        } 
-        // 2.2 Delete Data
-        else if ("delete".equals(action)) {
-            String id = request.getParameter("id");
-            PreparedStatement ps = conn.prepareStatement("DELETE FROM courses WHERE course_id = ?");
-            ps.setInt(1, Integer.parseInt(id));
-            ps.executeUpdate();
-            response.sendRedirect("all_addmin.jsp");
-            return;
-        }
+  request.setAttribute("currentPage", "courses");
+  Integer sessUserId = (Integer) session.getAttribute("userId");
 %>
 <!DOCTYPE html>
-<html lang="en">
+<html lang="th">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Course Management System</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;700&display=swap" rel="stylesheet">
-    <style>
-        body { font-family: 'Sarabun', sans-serif; background-color: #f8f9fa; }
-        .card { border: none; border-radius: 15px; }
-        .table-container { background: white; border-radius: 10px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>คอร์สเรียน - LearnHub</title>
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700;800&family=Chakra+Petch:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
 </head>
-<body class="container mt-5">
+<body>
+<%@ include file="navbar.jspf" %>
 
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2>📚 Course Management</h2>
-    </div>
+<div class="section">
+  <div class="section-header">
+    <h2>คอร์สเรียนทั้งหมด</h2>
+    <p>เลือกคอร์สที่คุณสนใจและเริ่มเรียนได้เลย</p>
+  </div>
+  <div class="grid-3">
+  <%
+    String[] colors = {"blue","green","purple","orange","blue","green"};
+    String[] icons  = {"💻","🌐","🗄️","📱","🎨","📊"};
+    Connection con = null;
+    try {
+      Class.forName("com.mysql.cj.jdbc.Driver");
+      con = DriverManager.getConnection(DB_URL, DB_USER, DB_PASS);
 
-    <div class="card p-4 mb-4 shadow-sm">
-        <h5 id="form-title" class="text-primary mb-3">Add New Course</h5>
-        <form action="all_addmin.jsp?action=save" method="post">
-            <input type="hidden" name="course_id" id="course_id">
-            <div class="row g-3">
-                <div class="col-md-5">
-                    <label class="form-label">Course Name</label>
-                    <input type="text" name="course_name" id="name" class="form-control" placeholder="Course Name" required>
-                </div>
-                <div class="col-md-4">
-                    <label class="form-label">Teacher ID</label>
-                    <input type="number" name="teacher_id" id="teacher" class="form-control" placeholder="Teacher ID" required>
-                </div>
-                <div class="col-md-3 d-flex align-items-end">
-                    <button type="submit" id="btn-submit" class="btn btn-primary w-100">Save Data</button>
-                </div>
-            </div>
-            <div id="edit-cancel" class="mt-2" style="display:none;">
-                <a href="all_addmin.jsp" class="btn btn-link btn-sm text-secondary">Cancel Editing</a>
-            </div>
-        </form>
-    </div>
-
-    <div class="table-container">
-        <table class="table table-hover mb-0">
-            <thead class="table-dark">
-                <tr>
-                    <th class="text-center">ID</th>
-                    <th>Course Title</th>
-                    <th class="text-center">Teacher ID</th>
-                    <th class="text-center">Actions</th>
-                </tr>
-            </thead>
-            <tbody>
-                <%
-                    Statement stmt = conn.createStatement();
-                    ResultSet rs = stmt.executeQuery("SELECT * FROM courses ORDER BY course_id DESC");
-                    boolean hasData = false;
-                    while(rs.next()) {
-                        hasData = true;
-                %>
-                <tr>
-                    <td class="text-center"><%= rs.getInt("course_id") %></td>
-                    <td><strong><%= rs.getString("course_name") %></strong></td>
-                    <td class="text-center"><%= rs.getInt("teacher_id") %></td>
-                    <td class="text-center">
-                        <button class="btn btn-warning btn-sm mx-1" 
-                                onclick="editData('<%= rs.getInt("course_id") %>', '<%= rs.getString("course_name") %>', '<%= rs.getInt("teacher_id") %>')">
-                            Edit
-                        </button>
-                        <a href="all_addmin.jsp?action=delete&id=<%= rs.getInt("course_id") %>" 
-                           class="btn btn-danger btn-sm mx-1" 
-                           onclick="return confirm('Delete this course?')">Delete</a>
-                    </td>
-                </tr>
-                <% 
-                    } 
-                    if (!hasData) {
-                        out.println("<tr><td colspan='4' class='text-center py-4 text-muted'>No records found.</td></tr>");
-                    }
-                %>
-            </tbody>
-        </table>
-    </div>
-
-    <script>
-        function editData(id, name, teacher) {
-            document.getElementById('course_id').value = id;
-            document.getElementById('name').value = name;
-            document.getElementById('teacher').value = teacher;
-            
-            document.getElementById('form-title').innerText = "Edit Course (ID: " + id + ")";
-            document.getElementById('edit-cancel').style.display = "block";
-            document.getElementById('btn-submit').className = "btn btn-success w-100";
-            document.getElementById('name').focus();
+      PreparedStatement ps = con.prepareStatement(
+        "SELECT c.course_id, c.course_name, " +
+        "(SELECT COUNT(*) FROM lessons l WHERE l.course_id=c.course_id) AS lc, " +
+        "(SELECT COUNT(*) FROM quizzes q WHERE q.course_id=c.course_id) AS qc, " +
+        "(SELECT COUNT(*) FROM enrollments e WHERE e.course_id=c.course_id) AS ec " +
+        "FROM courses c ORDER BY c.course_id");
+      ResultSet rs = ps.executeQuery();
+      int idx = 0;
+      boolean any = false;
+      while (rs.next()) {
+        any = true;
+        int cid = rs.getInt("course_id");
+        String cname = rs.getString("course_name");
+        boolean enrolled = false;
+        if (sessUserId != null) {
+          PreparedStatement psE = con.prepareStatement(
+            "SELECT 1 FROM enrollments WHERE user_id=? AND course_id=?");
+          psE.setInt(1, sessUserId);
+          psE.setInt(2, cid);
+          ResultSet rsE = psE.executeQuery();
+          enrolled = rsE.next();
+          rsE.close(); psE.close();
         }
-    </script>
-
+  %>
+    <div class="course-card">
+      <div class="course-thumb <%= colors[idx % colors.length] %>">
+        <span><%= icons[idx % icons.length] %></span>
+      </div>
+      <div class="course-body">
+        <div class="course-title"><%= cname %></div>
+        <div class="course-meta">
+          <span>📚 <%= rs.getInt("lc") %> บทเรียน</span>
+          <span>📋 <%= rs.getInt("qc") %> แบบทดสอบ</span>
+          <span>👥 <%= rs.getInt("ec") %> คน</span>
+        </div>
+        <% if (enrolled) { %>
+          <a href="classroom.jsp?id=<%= cid %>" class="btn btn-success" style="width:100%;justify-content:center;">✅ เรียนต่อ</a>
+        <% } else if (sessUserId != null) { %>
+          <a href="enroll.jsp?course_id=<%= cid %>" class="btn btn-primary" style="width:100%;justify-content:center;">ลงทะเบียนเรียน</a>
+        <% } else { %>
+          <a href="login.jsp" class="btn btn-primary" style="width:100%;justify-content:center;">เข้าสู่ระบบเพื่อเรียน</a>
+        <% } %>
+      </div>
+    </div>
+  <%
+        idx++;
+      }
+      if (!any) {
+  %>
+    <div style="grid-column:1/-1;text-align:center;padding:3rem;color:var(--gray);">
+      <div style="font-size:3rem;margin-bottom:1rem;">📚</div>
+      <div>ยังไม่มีคอร์สเรียน</div>
+    </div>
+  <%
+      }
+      rs.close(); ps.close();
+    } catch (Exception e) {
+  %>
+    <div class="card" style="grid-column:1/-1;">
+      <div class="alert alert-danger">เกิดข้อผิดพลาด: <%= e.getMessage() %></div>
+    </div>
+  <%
+    } finally {
+      if (con != null) try { con.close(); } catch (Exception ex) {}
+    }
+  %>
+  </div>
+</div>
 </body>
 </html>
-<%
-    } catch (Exception e) {
-        out.println("<div class='alert alert-danger mt-5'><strong>Error:</strong> " + e.getMessage() + "</div>");
-    } finally {
-        if (conn != null) try { conn.close(); } catch (SQLException ignore) {}
-    }
-%>
